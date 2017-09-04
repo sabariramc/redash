@@ -32,7 +32,16 @@ from query_results import QueryResultResource,error_response,run_query_sync,ONE_
 
 #Sabari
 
-class QueryResultViewResource(QueryResultResource):
+class QueryResultViewResource(BaseResource):
+    @staticmethod
+    def add_cors_headers(headers):
+        if 'Origin' in request.headers:
+            origin = request.headers['Origin']
+
+            if set(['*', origin]) & settings.ACCESS_CONTROL_ALLOW_ORIGIN:
+                headers['Access-Control-Allow-Origin'] = origin
+                headers['Access-Control-Allow-Credentials'] = str(settings.ACCESS_CONTROL_ALLOW_CREDENTIALS).lower()
+
     @require_permission('view_query_result')
     def options(self, query_id=None, query_result_id=None, filetype='json'):
         headers = {}

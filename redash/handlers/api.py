@@ -6,7 +6,7 @@ from redash.utils import json_dumps
 from redash.handlers.base import org_scoped_rule
 from redash.handlers.permissions import ObjectPermissionsListResource, CheckPermissionResource
 from redash.handlers.alerts import AlertResource, AlertListResource, AlertSubscriptionListResource, AlertSubscriptionResource
-from redash.handlers.dashboards import DashboardListResource, RecentDashboardsResource, DashboardResource, DashboardShareResource, PublicDashboardResource 
+from redash.handlers.dashboards import DashboardListResource, RecentDashboardsResource, DashboardResource, DashboardShareResource, PublicDashboardResource
 from redash.handlers.data_sources import DataSourceTypeListResource, DataSourceListResource, DataSourceSchemaResource, DataSourceResource, DataSourcePauseResource, DataSourceTestResource
 from redash.handlers.events import EventResource
 from redash.handlers.queries import QueryForkResource, QueryRefreshResource, QueryListResource, QueryRecentResource, QuerySearchResource, QueryResource, MyQueriesResource
@@ -19,6 +19,9 @@ from redash.handlers.groups import GroupListResource, GroupResource, GroupMember
     GroupDataSourceListResource, GroupDataSourceResource
 from redash.handlers.destinations import DestinationTypeListResource, DestinationResource, DestinationListResource
 from redash.handlers.query_snippets import QuerySnippetListResource, QuerySnippetResource
+
+
+from redash.handlers.query_result_view import QueryResultViewResource
 
 
 class ApiExt(Api):
@@ -79,10 +82,11 @@ api.add_org_resource(CheckPermissionResource, '/api/<object_type>/<object_id>/ac
 
 api.add_org_resource(QueryResultListResource, '/api/query_results', endpoint='query_results')
 api.add_org_resource(QueryResultResource,
-                     '/api/query_results/<query_result_id>',
                      '/api/queries/<query_id>/results.<filetype>',
                      '/api/queries/<query_id>/results/<query_result_id>.<filetype>',
                      endpoint='query_result')
+api.add_org_resource(QueryResultViewResource,
+                     '/api/query_results/<query_result_id>',endpoint="query_results_view")
 api.add_org_resource(JobResource, '/api/jobs/<job_id>', endpoint='job')
 
 api.add_org_resource(UserListResource, '/api/users', endpoint='users')

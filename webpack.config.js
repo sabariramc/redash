@@ -4,6 +4,7 @@ var webpack = require('webpack');
 var HtmlWebpackPlugin = require('html-webpack-plugin');
 var ExtractTextPlugin = require("extract-text-webpack-plugin");
 var WebpackBuildNotifierPlugin = require('webpack-build-notifier');
+var LessPluginAutoPrefix = require('less-plugin-autoprefix');
 var path = require('path');
 
 var redashBackend = process.env.REDASH_BACKEND || 'http://localhost:5000';
@@ -17,7 +18,11 @@ var config = {
     filename: '[name].js',
     publicPath: '/'
   },
-
+  resolve: {
+    alias: {
+      '@': path.join(__dirname, 'client/app')
+    }
+  },
   plugins: [
     new WebpackBuildNotifierPlugin({title: 'Redash'}),
     new webpack.DefinePlugin({
@@ -78,6 +83,24 @@ var config = {
         }])
       },
       {
+        test: /\.less$/,
+        use: ExtractTextPlugin.extract([
+          {
+            loader: 'css-loader',
+            options: {
+              minimize: process.env.NODE_ENV === 'production'
+            }
+          }, {
+            loader: 'less-loader',
+            options: {
+              plugins: [
+                new LessPluginAutoPrefix({browsers: ['last 3 versions']})
+              ]
+            }
+          }
+        ])
+      },
+      {
         test: /\.scss$/,
         use: ExtractTextPlugin.extract([
           {
@@ -117,44 +140,14 @@ var config = {
     inline: true,
     historyApiFallback: true,
     contentBase: path.join(__dirname, 'client', 'app'),
-    proxy: {
-      '/login': {
-        target: redashBackend + '/',
-        secure: false
-      },
-      '/invite': {
-        target: redashBackend + '/',
-        secure: false
-      },
-      '/setup': {
-        target: redashBackend + '/',
-        secure: false
-      },
-      '/images': {
-        target: redashBackend + '/',
-        secure: false
-      },
-      '/js': {
-        target: redashBackend + '/',
-        secure: false
-      },
-      '/styles': {
-        target: redashBackend + '/',
-        secure: false
-      },
-      '/status.json': {
-        target: redashBackend + '/',
-        secure: false
-      },
-      '/api/admin': {
-        target: redashBackend + '/',
-        secure: false
-      },
-      '/api': {
-        target: redashBackend,
-        secure: false
-      }
-    }
+    proxy: [{
+      context: [
+        '/login', '/invite', '/setup', '/images', '/js', '/styles',
+        '/status.json', '/api', '/oauth'],
+      target: redashBackend + '/',
+      changeOrigin: true,
+      secure: false
+    }]
   }
 };
 

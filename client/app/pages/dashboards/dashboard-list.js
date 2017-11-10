@@ -1,6 +1,6 @@
 import _ from 'underscore';
 
-import { Paginator } from '../../utils';
+import { Paginator } from '@/lib/pagination';
 import template from './dashboard-list.html';
 import './dashboard-list.css';
 
@@ -75,7 +75,7 @@ function DashboardListCtrl(Dashboard, $location, clientConfig) {
   this.update();
 }
 
-export default function (ngModule) {
+export default function init(ngModule) {
   ngModule.component('pageDashboardList', {
     template,
     controller: DashboardListCtrl,

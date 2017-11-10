@@ -1,5 +1,5 @@
 import jQuery from 'jquery';
-import Sunburst from './sunburst';
+import Sunburst from '@/lib/visualizations/sunburst';
 import editorTemplate from './sunburst-sequence-editor.html';
 
 function sunburstSequenceRenderer() {
@@ -30,7 +30,7 @@ function sunburstSequenceEditor() {
   };
 }
 
-export default function (ngModule) {
+export default function init(ngModule) {
   ngModule.directive('sunburstSequenceRenderer', sunburstSequenceRenderer);
   ngModule.directive('sunburstSequenceEditor', sunburstSequenceEditor);
 
@@ -50,6 +50,5 @@ export default function (ngModule) {
       editorTemplate: editTemplate,
       defaultOptions,
     });
-  }
-  );
+  });
 }

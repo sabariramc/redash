@@ -1,4 +1,4 @@
-import { Paginator } from '../../utils';
+import { Paginator } from '@/lib/pagination';
 import template from './list.html';
 
 function UsersCtrl(currentUser, Events, User) {
@@ -11,7 +11,7 @@ function UsersCtrl(currentUser, Events, User) {
   });
 }
 
-export default function (ngModule) {
+export default function init(ngModule) {
   ngModule.component('usersListPage', {
     controller: UsersCtrl,
     template,

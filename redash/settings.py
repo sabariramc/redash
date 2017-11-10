@@ -94,6 +94,7 @@ SCHEMAS_REFRESH_SCHEDULE = int(os.environ.get("REDASH_SCHEMAS_REFRESH_SCHEDULE",
 AUTH_TYPE = os.environ.get("REDASH_AUTH_TYPE", "api_key")
 PASSWORD_LOGIN_ENABLED = parse_boolean(os.environ.get("REDASH_PASSWORD_LOGIN_ENABLED", "true"))
 ENFORCE_HTTPS = parse_boolean(os.environ.get("REDASH_ENFORCE_HTTPS", "false"))
+INVITATION_TOKEN_MAX_AGE = int(os.environ.get("REDASH_INVITATION_TOKEN_MAX_AGE", 60 * 60 * 24 * 7))
 
 MULTI_ORG = parse_boolean(os.environ.get("REDASH_MULTI_ORG", "false"))
 
@@ -163,6 +164,9 @@ SESSION_COOKIE_SECURE = parse_boolean(os.environ.get("REDASH_SESSION_COOKIE_SECU
 
 LOG_LEVEL = os.environ.get("REDASH_LOG_LEVEL", "INFO")
 LOG_STDOUT = parse_boolean(os.environ.get('REDASH_LOG_STDOUT', 'false'))
+LOG_FORMAT = os.environ.get('REDASH_LOG_FORMAT', '[%(asctime)s][PID:%(process)d][%(levelname)s][%(name)s] %(message)s')
+CELERYD_LOG_FORMAT = os.environ.get('REDASH_CELERYD_LOG_FORMAT', '[%(asctime)s][PID:%(process)d][%(levelname)s][%(processName)s] %(message)s')
+CELERYD_TASK_LOG_FORMAT = os.environ.get('REDASH_CELERYD_TASK_LOG_FORMAT', '[%(asctime)s][PID:%(process)d][%(levelname)s][%(processName)s] task_name=%(task_name)s taks_id=%(task_id)s %(message)s')
 
 # Mail settings:
 MAIL_SERVER = os.environ.get('REDASH_MAIL_SERVER', 'localhost')
@@ -183,6 +187,7 @@ ALERTS_DEFAULT_MAIL_SUBJECT_TEMPLATE = os.environ.get('REDASH_ALERTS_DEFAULT_MAI
 # being throttled?
 # See https://flask-limiter.readthedocs.io/en/stable/#rate-limit-string-notation
 THROTTLE_LOGIN_PATTERN = os.environ.get('REDASH_THROTTLE_LOGIN_PATTERN', '50/hour')
+LIMITER_STORAGE = os.environ.get("REDASH_LIMITER_STORAGE", REDIS_URL)
 
 # CORS settings for the Query Result API (and possbily future external APIs).
 # In most cases all you need to do is set REDASH_CORS_ACCESS_CONTROL_ALLOW_ORIGIN
@@ -217,7 +222,8 @@ default_query_runners = [
     'redash.query_runner.jql',
     'redash.query_runner.google_analytics',
     'redash.query_runner.axibase_tsd',
-    'redash.query_runner.salesforce'
+    'redash.query_runner.salesforce',
+    'redash.query_runner.query_results'
 ]
 
 enabled_query_runners = array_from_string(os.environ.get("REDASH_ENABLED_QUERY_RUNNERS", ",".join(default_query_runners)))
@@ -225,6 +231,7 @@ additional_query_runners = array_from_string(os.environ.get("REDASH_ADDITIONAL_Q
 disabled_query_runners = array_from_string(os.environ.get("REDASH_DISABLED_QUERY_RUNNERS", ""))
 
 QUERY_RUNNERS = remove(set(disabled_query_runners), distinct(enabled_query_runners + additional_query_runners))
+ADHOC_QUERY_TIME_LIMIT = int_or_none(os.environ.get('REDASH_ADHOC_QUERY_TIME_LIMIT', None))
 
 # Destinations
 default_destinations = [

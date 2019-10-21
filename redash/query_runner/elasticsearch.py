@@ -3,10 +3,12 @@ import sys
 import urllib
 
 import requests
-import simplejson as json
 from requests.auth import HTTPBasicAuth
+from six import string_types, text_type
 
 from redash.query_runner import *
+from redash.utils import json_dumps, json_loads
+from redash.utils.compat import long
 
 try:
     import http.client as http_client
@@ -35,7 +37,7 @@ ELASTICSEARCH_BUILTIN_FIELDS_MAPPING = {
 
 PYTHON_TYPES_MAPPING = {
     str: TYPE_STRING,
-    unicode: TYPE_STRING,
+    text_type: TYPE_STRING,
     bool: TYPE_BOOLEAN,
     int: TYPE_INTEGER,
     long: TYPE_INTEGER,
@@ -44,6 +46,7 @@ PYTHON_TYPES_MAPPING = {
 
 
 class BaseElasticSearch(BaseQueryRunner):
+    should_annotate_query = False
     DEBUG_ENABLED = False
 
     @classmethod
@@ -64,6 +67,7 @@ class BaseElasticSearch(BaseQueryRunner):
                     'title': 'Basic Auth Password'
                 }
             },
+            "order": ['server', 'basic_auth_user', 'basic_auth_password'],
             "secret": ["basic_auth_password"],
             "required": ["server"]
         }
@@ -74,7 +78,6 @@ class BaseElasticSearch(BaseQueryRunner):
 
     def __init__(self, configuration):
         super(BaseElasticSearch, self).__init__(configuration)
-
         self.syntax = "json"
 
         if self.DEBUG_ENABLED:
@@ -218,6 +221,8 @@ class BaseElasticSearch(BaseQueryRunner):
                 for value in data:
                     result_row = get_row(rows, row)
                     collect_aggregations(mappings, rows, parent_key, value, result_row, result_columns, result_columns_index)
+                    if 'doc_count' in value:
+                        collect_value(mappings, result_row, 'doc_count', value['doc_count'], 'integer')
                     if 'key' in value:
                         if 'key_as_string' in value:
                             collect_value(mappings, result_row, parent_key, value['key_as_string'], 'string')
@@ -269,7 +274,7 @@ class BaseElasticSearch(BaseQueryRunner):
 
                 result_rows.append(row)
         else:
-            raise Exception("Redash failed to parse the results it got from ElasticSearch.")
+            raise Exception("Redash failed to parse the results it got from Elasticsearch.")
 
     def test_connection(self):
         try:
@@ -284,16 +289,9 @@ class BaseElasticSearch(BaseQueryRunner):
 
 
 class Kibana(BaseElasticSearch):
-    def __init__(self, configuration):
-        super(Kibana, self).__init__(configuration)
-
     @classmethod
     def enabled(cls):
         return True
-
-    @classmethod
-    def annotate_query(cls):
-        return False
 
     def _execute_simple_query(self, url, auth, _from, mappings, result_fields, result_columns, result_rows):
         url += "&from={0}".format(_from)
@@ -315,7 +313,7 @@ class Kibana(BaseElasticSearch):
             error = None
 
             logger.debug(query)
-            query_params = json.loads(query)
+            query_params = json_loads(query)
 
             index_name = query_params["index"]
             query_data = query_params["query"]
@@ -334,7 +332,6 @@ class Kibana(BaseElasticSearch):
             mappings, error = self._get_query_mappings(mapping_url)
             if error:
                 return None, error
-            #logger.debug(json.dumps(mappings, indent=4))
 
             if sort:
                 url += "&sort={0}".format(urllib.quote_plus(sort))
@@ -346,7 +343,7 @@ class Kibana(BaseElasticSearch):
 
             result_columns = []
             result_rows = []
-            if isinstance(query_data, str) or isinstance(query_data, unicode):
+            if isinstance(query_data, string_types):
                 _from = 0
                 while True:
                     query_size = size if limit >= (_from + size) else (limit - _from)
@@ -358,7 +355,7 @@ class Kibana(BaseElasticSearch):
                 # TODO: Handle complete ElasticSearch queries (JSON based sent over HTTP POST)
                 raise Exception("Advanced queries are not supported")
 
-            json_data = json.dumps({
+            json_data = json_dumps({
                 "columns": result_columns,
                 "rows": result_rows
             })
@@ -373,32 +370,25 @@ class Kibana(BaseElasticSearch):
             logger.exception(e)
             error = "Connection refused"
             json_data = None
-        except Exception as e:
-            logger.exception(e)
-            raise sys.exc_info()[1], None, sys.exc_info()[2]
 
         return json_data, error
 
 
 class ElasticSearch(BaseElasticSearch):
-
-    def __init__(self, configuration):
-        super(ElasticSearch, self).__init__(configuration)
-
     @classmethod
     def enabled(cls):
         return True
 
     @classmethod
-    def annotate_query(cls):
-        return False
+    def name(cls):
+        return 'Elasticsearch'
 
     def run_query(self, query, user):
         try:
             error = None
 
             logger.debug(query)
-            query_dict = json.loads(query)
+            query_dict = json_loads(query)
 
             index_name = query_dict.pop("index", "")
             result_fields = query_dict.pop("result_fields", None)
@@ -414,10 +404,9 @@ class ElasticSearch(BaseElasticSearch):
             if error:
                 return None, error
 
-            params = {"source": json.dumps(query_dict)}
             logger.debug("Using URL: %s", url)
-            logger.debug("Using params : %s", params)
-            r = requests.get(url, params=params, auth=self.auth)
+            logger.debug("Using query: %s", query_dict)
+            r = requests.get(url, json=query_dict, auth=self.auth)
             r.raise_for_status()
             logger.debug("Result: %s", r.json())
 
@@ -425,7 +414,7 @@ class ElasticSearch(BaseElasticSearch):
             result_rows = []
             self._parse_results(mappings, result_fields, r.json(), result_columns, result_rows)
 
-            json_data = json.dumps({
+            json_data = json_dumps({
                 "columns": result_columns,
                 "rows": result_rows
             })
@@ -441,9 +430,6 @@ class ElasticSearch(BaseElasticSearch):
             logger.exception(e)
             error = "Connection refused"
             json_data = None
-        except Exception as e:
-            logger.exception(e)
-            raise sys.exc_info()[1], None, sys.exc_info()[2]
 
         return json_data, error
 

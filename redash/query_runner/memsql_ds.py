@@ -1,9 +1,8 @@
-import json
 import logging
 import sys
 
 from redash.query_runner import *
-from redash.utils import JSONEncoder
+from redash.utils import json_dumps
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +37,7 @@ types_map = {
 
 
 class MemSQL(BaseSQLQueryRunner):
+    should_annotate_query = False
     noop_query = 'SELECT 1'
 
     @classmethod
@@ -64,19 +64,12 @@ class MemSQL(BaseSQLQueryRunner):
         }
 
     @classmethod
-    def annotate_query(cls):
-        return False
-
-    @classmethod
     def type(cls):
         return "memsql"
 
     @classmethod
     def enabled(cls):
         return enabled
-
-    def __init__(self, configuration):
-        super(MemSQL, self).__init__(configuration)
 
     def _get_tables(self, schema):
         schemas_query = "show schemas"
@@ -134,15 +127,12 @@ class MemSQL(BaseSQLQueryRunner):
                     })
 
             data = {'columns': columns, 'rows': rows}
-            json_data = json.dumps(data, cls=JSONEncoder)
+            json_data = json_dumps(data)
             error = None
         except KeyboardInterrupt:
             cursor.close()
             error = "Query cancelled by user."
             json_data = None
-        except Exception as e:
-            logging.exception(e)
-            raise sys.exc_info()[1], None, sys.exc_info()[2]
         finally:
             if cursor:
                 cursor.close()

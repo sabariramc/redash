@@ -1,15 +1,15 @@
 import requests
 
-from celery.utils.log import get_task_logger
 from flask_mail import Message
 from redash import mail, models, settings
+from redash.models import users
 from redash.version_check import run_version_check
-from redash.worker import celery
+from redash.worker import job, get_job_logger
 
-logger = get_task_logger(__name__)
+logger = get_job_logger(__name__)
 
 
-@celery.task(name="redash.tasks.record_event")
+@job('default')
 def record_event(raw_event):
     event = models.Event.record(raw_event)
     models.db.session.commit()
@@ -28,12 +28,11 @@ def record_event(raw_event):
             logger.exception("Failed posting to %s", hook)
 
 
-@celery.task(name="redash.tasks.version_check")
 def version_check():
     run_version_check()
 
 
-@celery.task(name="redash.tasks.subscribe")
+@job('default')
 def subscribe(form):
     logger.info("Subscribing to: [security notifications=%s], [newsletter=%s]", form['security_notifications'], form['newsletter'])
     data = {
@@ -46,7 +45,7 @@ def subscribe(form):
     requests.post('https://beacon.redash.io/subscribe', json=data)
 
 
-@celery.task(name="redash.tasks.send_mail")
+@job('default')
 def send_mail(to, subject, html, text):
     try:
         message = Message(recipients=to,
@@ -57,3 +56,7 @@ def send_mail(to, subject, html, text):
         mail.send(message)
     except Exception:
         logger.exception('Failed sending message: %s', message.subject)
+
+
+def sync_user_details():
+    users.sync_last_active_at()

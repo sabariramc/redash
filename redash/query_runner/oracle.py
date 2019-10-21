@@ -1,9 +1,7 @@
-import json
 import logging
-import sys
 
+from redash.utils import json_dumps, json_loads
 from redash.query_runner import *
-from redash.utils import JSONEncoder
 
 try:
     import cx_Oracle
@@ -24,12 +22,12 @@ try:
         cx_Oracle.TIMESTAMP: TYPE_DATETIME,
     }
 
-
     ENABLED = True
 except ImportError:
     ENABLED = False
 
 logger = logging.getLogger(__name__)
+
 
 class Oracle(BaseSQLQueryRunner):
     noop_query = "SELECT 1 FROM dual"
@@ -100,7 +98,7 @@ class Oracle(BaseSQLQueryRunner):
         if error is not None:
             raise Exception("Failed getting schema.")
 
-        results = json.loads(results)
+        results = json_loads(results)
 
         for row in results['rows']:
             if row['OWNER'] != None:
@@ -142,17 +140,19 @@ class Oracle(BaseSQLQueryRunner):
 
         try:
             cursor.execute(query)
-
+            rows_count = cursor.rowcount
             if cursor.description is not None:
                 columns = self.fetch_columns([(i[0], Oracle.get_col_type(i[1], i[5])) for i in cursor.description])
                 rows = [dict(zip((c['name'] for c in columns), row)) for row in cursor]
-
                 data = {'columns': columns, 'rows': rows}
                 error = None
-                json_data = json.dumps(data, cls=JSONEncoder)
+                json_data = json_dumps(data)
             else:
-                error = 'Query completed but it returned no data.'
-                json_data = None
+                columns = [{'name': 'Row(s) Affected', 'type': 'TYPE_INTEGER'}]
+                rows = [{'Row(s) Affected': rows_count}]
+                data = {'columns': columns, 'rows': rows}
+                json_data = json_dumps(data)
+                connection.commit()
         except cx_Oracle.DatabaseError as err:
             error = u"Query failed. {}.".format(err.message)
             json_data = None
@@ -164,5 +164,6 @@ class Oracle(BaseSQLQueryRunner):
             connection.close()
 
         return json_data, error
+
 
 register(Oracle)

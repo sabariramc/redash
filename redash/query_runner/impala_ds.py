@@ -1,9 +1,7 @@
-import json
 import logging
-import sys
 
 from redash.query_runner import *
-from redash.utils import JSONEncoder
+from redash.utils import json_dumps
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +48,11 @@ class Impala(BaseSQLQueryRunner):
                 },
                 "protocol": {
                     "type": "string",
-                    "title": "Please specify beeswax or hiveserver2"
+                    "extendedEnum": [
+                        {"value": "beeswax", "name": "Beeswax"},
+                        {"value": "hiveserver2", "name": "Hive Server 2"}
+                    ],
+                    "title": "Protocol"
                 },
                 "database": {
                     "type": "string"
@@ -75,9 +77,6 @@ class Impala(BaseSQLQueryRunner):
     @classmethod
     def type(cls):
         return "impala"
-
-    def __init__(self, configuration):
-        super(Impala, self).__init__(configuration)
 
     def _get_tables(self, schema_dict):
         schemas_query = "show schemas;"
@@ -121,7 +120,7 @@ class Impala(BaseSQLQueryRunner):
             rows = [dict(zip(column_names, row)) for row in cursor]
 
             data = {'columns': columns, 'rows': rows}
-            json_data = json.dumps(data, cls=JSONEncoder)
+            json_data = json_dumps(data)
             error = None
             cursor.close()
         except DatabaseError as e:
@@ -139,5 +138,6 @@ class Impala(BaseSQLQueryRunner):
                 connection.close()
 
         return json_data, error
+
 
 register(Impala)
